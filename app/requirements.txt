@@ -1,0 +1,14 @@
+pymysql==1.1.1
+requests==2.32.3
+pymongo==4.10.1
+tensorflow==2.18.0
+numpy==1.26.4
+pillow==11.0.0
+requests==2.32.3
+clarifai==10.10.1
+clarifai-grpc==10.10.2
+clarifai-protocol==0.0.10
+Flask==3.1.0
+Flask-Cors==5.0.0
+APScheduler==3.8.1
+faiss-cpu==1.9.0.post1
