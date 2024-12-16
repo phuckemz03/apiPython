@@ -307,9 +307,8 @@ def check_text():
         for category, threshold in thresholds.items():
             value = predictions.get(category, 0)
 
-            print(f"Kiểm tra {category}: giá trị = {
-                  value}, ngưỡng = {threshold}")
-
+            print(f"Kiểm tra {category}: giá trị = {value}, ngưỡng = {threshold}")
+    
             if value >= threshold:
                 violated_categories.append({
                     "category": category,
@@ -371,7 +370,7 @@ def check_image():
 def schedule_task():
     # Chạy công việc ngay lập tức nếu cần
     scheduled_task()
-    """Đồng bộ dữ liệu từ MongoDB vào pickle file."""
+    """ MongoDB to pickle file."""
     model = load_model()
     image_paths, product_ids = get_images_from_mongodb()
 
@@ -385,7 +384,7 @@ def schedule_task():
     for path in image_paths:
         os.remove(path)
 
-    print("Đồng bộ dữ liệu thành công!")
+    print("Dong bo thanh cong!")
 
     return "Scheduled task triggered manually!"
 
