@@ -25,12 +25,11 @@ PICKLE_FEATURES = 'Images_features.pkl'
 PICKLE_FILENAMES = 'filenames.pkl'
 IMG_SIZE = (224, 224)
 TOP_K = 5
-FAISS_THRESHOLD = 0.6
+FAISS_THRESHOLD = 0.5
 
 model_urlTEXT = "https://clarifai.com/clarifai/main/models/moderation-multilingual-text-classification"
 MODEL_URL = "https://clarifai.com/clarifai/main/models/general-image-detection"
 pat = "c9bcfa03a89c476b91936cab785c8b0d"
-
 
 
 thresholds = {
@@ -49,7 +48,20 @@ CORS(app)
 
 
 def scheduled_task():
-    print(f"Scheduled task ran at {datetime.now()}")
+    """API endpoint to trigger the synchronization task."""
+    # Fetch data from MySQL
+
+    mysql_data = get_mysql_data()
+
+    if mysql_data:
+        print("Bắt đầu đồng bộ dữ liệu...")
+        sync_to_mongodb(mysql_data)
+        sync_data()
+
+        print("Data sync completed successfully!")
+    else:
+        print("No data from MySQL to sync.")
+
 
 
 # Khởi tạo BackgroundScheduler
@@ -59,7 +71,7 @@ scheduler = BackgroundScheduler()
 tz = pytz.timezone('Asia/Ho_Chi_Minh')
 
 # Đặt công việc chạy mỗi 24 giờ
-scheduler.add_job(scheduled_task, 'interval', hours=24, timezone=tz)
+scheduler.add_job(scheduled_task, 'interval', minutes=60, timezone=tz)
 
 # Bắt đầu scheduler
 scheduler.start()
@@ -244,9 +256,25 @@ def find_similar_images(input_image, model, index, filenames, product_ids, k=TOP
     return similar_product_ids
 
 
-app.route('/search-image', methods=['POST'])
+def sync_data():
+    """Đồng bộ dữ liệu từ MongoDB vào pickle file."""
+    model = load_model()
+    image_paths, product_ids = get_images_from_mongodb()
+
+    # Trích xuất đặc trưng từ ảnh
+    features = extract_features_batch(model, image_paths)
+
+    # Lưu đặc trưng và tên file vào pickle
+    save_features_and_filenames(features, image_paths, product_ids)
+
+    # Xóa các file tạm sau khi xử lý
+    for path in image_paths:
+        os.remove(path)
+
+    print("Đồng bộ dữ liệu thành công!")
 
 
+@app.route('/search-image', methods=['POST'])
 def search_image():
     """Tìm kiếm sản phẩm tương tự với ảnh đầu vào."""
     # Nhận ảnh từ người dùng
@@ -293,8 +321,7 @@ def check_text():
             temp_file.write(text)
 
         model = Model(url=model_urlTEXT, pat=pat)
-        model_prediction = model.predict_by_filepath(
-            temp_file_path, input_type="text")
+        model_prediction = model.predict_by_filepath(temp_file_path, input_type="text")
 
         if not model_prediction.outputs:
             return jsonify({"error": "No outputs returned from model"}), 500
@@ -306,7 +333,7 @@ def check_text():
 
         for category, threshold in thresholds.items():
             value = predictions.get(category, 0)
-
+    
             print(f"Kiểm tra {category}: giá trị = {value}, ngưỡng = {threshold}")
     
             if value >= threshold:
@@ -325,7 +352,7 @@ def check_text():
             "result": True,
         })
     except Exception as e:
-
+        
         return jsonify({"error": str(e)}), 500
 
 
@@ -365,28 +392,6 @@ def check_image():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@app.route('/dongBo')
-def schedule_task():
-    # Chạy công việc ngay lập tức nếu cần
-    scheduled_task()
-    """ MongoDB to pickle file."""
-    model = load_model()
-    image_paths, product_ids = get_images_from_mongodb()
-
-    # Trích xuất đặc trưng từ ảnh
-    features = extract_features_batch(model, image_paths)
-
-    # Lưu đặc trưng và tên file vào pickle
-    save_features_and_filenames(features, image_paths, product_ids)
-
-    # Xóa các file tạm sau khi xử lý
-    for path in image_paths:
-        os.remove(path)
-
-    print("Dong bo thanh cong!")
-
-    return "Scheduled task triggered manually!"
 
 
 if __name__ == "__main__":
